@@ -168,11 +168,16 @@ st.markdown("""
 _DISPLAY_OPTIONS = ["All products (max risk)"] + [PRODUCT_DISPLAY_NAMES.get(p, p) for p in PRODUCT_BASKET]
 _REVERSE_DISPLAY_MAP = {PRODUCT_DISPLAY_NAMES.get(p, p): p for p in PRODUCT_BASKET}
 
+if "_product_top" not in st.session_state:
+    st.session_state["_product_top"] = st.session_state["selected_product_key"]
+if "_product_bottom" not in st.session_state:
+    st.session_state["_product_bottom"] = st.session_state["selected_product_key"]
+
 _col_product, _col_mode = st.columns([1, 2])
 with _col_product:
     def _on_product_change_top():
-        _dv = st.session_state["_product_top"]
-        st.session_state["selected_product_key"] = _REVERSE_DISPLAY_MAP.get(_dv, _dv)
+        st.session_state["selected_product_key"] = st.session_state["_product_top"]
+        st.session_state["_product_bottom"] = st.session_state["_product_top"]
 
     _cur_display = PRODUCT_DISPLAY_NAMES.get(
         st.session_state["selected_product_key"],
@@ -554,8 +559,8 @@ st.markdown("---")
 st.subheader("Price & Temperature History")
 
 def _on_product_change_bottom():
-    _dv = st.session_state["_product_bottom"]
-    st.session_state["selected_product_key"] = _REVERSE_DISPLAY_MAP.get(_dv, _dv)
+    st.session_state["selected_product_key"] = st.session_state["_product_bottom"]
+    st.session_state["_product_top"] = st.session_state["_product_bottom"]
 
 _cur_bottom_display = PRODUCT_DISPLAY_NAMES.get(
     st.session_state["selected_product_key"],
