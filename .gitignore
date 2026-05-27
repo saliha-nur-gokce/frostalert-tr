@@ -1,0 +1,20 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+
+# Cached risk-score files (recomputed at runtime)
+data/global_ref_max.json
+data/ref_max_*.json
+
+# Large original frost image (only small version kept)
+images/frost_image.png
+
+# macOS
+.DS_Store
+**/.DS_Store
+
+# Streamlit
+.streamlit/secrets.toml

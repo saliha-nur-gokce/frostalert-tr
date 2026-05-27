@@ -1,5 +1,5 @@
 # FrostAlert-TR — Project Context for Claude Code
-*Last updated: May 2026*
+*Last updated: May 26, 2026*
 
 ---
 
@@ -50,13 +50,9 @@ Data Analysis). **No new ML model is trained.** The dashboard operationalizes ex
   - `date` — datetime, first of month (e.g. `2022-01-01`)
   - `Real_Price` — CPI-deflated farm-gate price (base: January 2024), TL/kg
   - `Production_Quantity` — annual production quantity (tons), merged from TÜİK; same value
-    repeated for all months of that year (this is expected, result of annual→monthly merge)
+    repeated for all months of that year (expected, result of annual→monthly merge)
   - `min_temp` — monthly minimum temperature (°C), from ERA5-Land via Open-Meteo
   - `precipitation`, `humidity`, `wind_speed` — meteorological controls
-  - `days_below_0` through `days_below_-5` — count of days below each threshold per month
-  - `false_spring_event` — binary dummy
-  - `CPI_Index` — used for deflation
-  - `Log_Price` — created in-session: `np.log(Real_Price)`
 
 ### 3.2 Additional Data Files
 
@@ -65,29 +61,31 @@ Data Analysis). **No new ML model is trained.** The dashboard operationalizes ex
 - 81 provinces with `City`, `Latitude`, `Longitude`
 - All city names verified to match main dataset exactly (zero mismatches)
 
-**`spring_frost_candidates.csv`** — 42 products with zero winter response
-- These are candidates for spring frost extension (April–May window)
-- If time permits before June 11: add spring frost analysis as optional dashboard layer
-- If not: documented as future work in Methodology page
+**`data/turkey_provinces.geojson`** — bundled inside the project
+- Loaded from `Path(__file__).parent / "data" / "turkey_provinces.geojson"`
+- Falls back to downloading from GitHub (cihadturhan/tr-geojson) if not present
+- Province names normalized via `GEOJSON_TO_CITY` dict in config.py
 
-### 3.3 Static Figure Assets
+**`data/whisker_data.csv`** — bundled inside the project
+- Columns: `Product`, `Lag`, `Coef`, `Error_Min`, `Error_Max`
+- Used by `build_whisker_plot()` in Page 2 (Product Detail)
+- Source: product-specific FE regression output (CSSM 502, May 2026)
 
-**Whisker plot:**
-- Path: `/Users/salihanurgokce/Desktop/SCHOOL/CSS/CSSM502/project/projectFinal/HeterogeneousImpactofFrostShocksonPrices.png`
-- Used in: Page 2 (Product Detail), static display
+### 3.3 Image Assets
 
-**Event study (default figure):**
-- Path: `/Users/salihanurgokce/Desktop/SCHOOL/CSS/CSSM502/project/graphs_agriculture/ag_event_study.png`
-- Used in: Page 2 (Product Detail), shown before user selects a custom city-product combo
-- Default combination: Konya + Biber, February 2023
+**`images/frost_image.png`** — 1.7 MB original
+**`images/frost_image_small.jpg`** — 194 KB resized version (1400px wide, RGB, quality=75)
+- Used on landing page (`app.py`) as right-side background
+- Loaded via `load_frost_image()` with `@st.cache_data`
 
-### 3.4 Risk Score CSV (do NOT use directly)
+**`images/vegetables.png`** — present but not currently used in dashboard
 
-**`risk_score_historical.csv`** — 1,377 city-product pairs, previously computed
-- **Do not use as static input.** Sj values were computed from an earlier (incorrect) sensitivity
-  table. Risk scores must be recomputed at runtime from the main dataset using the corrected
+### 3.4 Deprecated / Do Not Use
+
+**`risk_score_historical.csv`** — previously computed risk scores
+- **Do not use as static input.** Sj values computed from an earlier (incorrect) sensitivity table.
+- Risk scores must be recomputed at runtime from the main dataset using the corrected
   SENSITIVITY_TABLE in config.py.
-- File is kept for reference/debugging only.
 
 ---
 
@@ -109,79 +107,80 @@ Source: product-specific FE regression output (`df_coef` table, verified May 202
 | Hıyar | Cucumber | 14.18 | — | Vegetables |
 | Ispanak | Spinach | 5.06 | — | Vegetables |
 | Roka | Arugula | 9.64 | — | Vegetables |
-| Turp | Radish (combined Kırmızı+Bayır regression) | 2.58 | — | Vegetables |
+| Turp | Radish | 2.58 | — | Vegetables |
 | Mandalina | Mandarin | 2.52 | — | Citrus |
-| Nar | Pomegranate | 6.08 | — | Citrus/Other |
-| Portakal | Orange | 0.0 | ✓ insufficient_signal (Lag1 negative) | Citrus |
-| Elma | Apple | 0.0 | ✓ insufficient_signal (Lag1 negative) | Pome |
-| Kiraz | Cherry | 0.0 | ✓ zero response (dormancy) | Stone fruit |
-| Vişne | Sour Cherry | 0.0 | ✓ zero response (dormancy) | Stone fruit |
-| Kayısı | Apricot | 0.0 | ✓ zero response (dormancy) | Stone fruit |
-| Şeftali | Peach | 0.0 | ✓ zero response (dormancy) | Stone fruit |
-| Erik | Plum | 0.0 | ✓ zero response (dormancy) | Stone fruit |
-| Çilek | Strawberry | 0.0 | ✓ zero response (dormancy) | Stone fruit |
+| Nar | Pomegranate | 6.08 | — | Citrus |
+| Portakal | Orange | 0.0 | insufficient_signal (Lag1 negative) | Citrus |
+| Elma | Apple | 0.0 | insufficient_signal (Lag1 negative) | Pome |
+| Kiraz | Cherry | 0.0 | zero_response (dormancy) | Stone fruit |
+| Vişne | Sour Cherry | 0.0 | zero_response (dormancy) | Stone fruit |
+| Kayısı | Apricot | 0.0 | zero_response (dormancy) | Stone fruit |
+| Şeftali | Peach | 0.0 | zero_response (dormancy) | Stone fruit |
+| Erik | Plum | 0.0 | zero_response (dormancy) | Stone fruit |
+| Çilek | Strawberry | 0.0 | zero_response (dormancy) | Stone fruit |
 
 **Why flagged products are kept in the dashboard:**
-- Stone fruits: winter window Lag1 = 0 due to biological dormancy — this IS the robustness
-  check argument. Dashboard shows "Risk window for this crop is April–May" warning.
-- Elma: Lag1 negative across all varieties (Golden, Amasya, Starking, Granny Smith) —
-  likely inventory buffering. Floor at zero, show "insufficient frost signal" flag.
-- Portakal: Lag1 negative (-6.08%), likely harvest-period seasonality interaction.
-  Floor at zero, show "insufficient frost signal" flag.
+- Stone fruits: winter window Lag1 = 0 due to biological dormancy. Dashboard shows
+  "Risk window for this crop is April–May" warning with yellow border.
+- Elma, Portakal: Lag1 negative — likely inventory buffering / harvest-season interaction.
+  Floor at zero, show "insufficient frost signal" flag with blue border.
 
 ---
 
 ## 5. Risk Score Formula
 
 ```
-Risk_ij = E_i × S_j × P_ij
+Risk_ij = E_i × S_j × P_ij × 100
 ```
 
-All three components normalized to [0, 1] before multiplication, final score scaled to [0, 100].
+All three components normalized to [0, 1] before multiplication; final score scaled to [0, 100].
 
 ### E_i — Frost Exposure (province level)
-- **Historical version:** fraction of winter months (Nov–Mar) with min_temp < -2°C,
-  computed over 2022–2024
-- **Forecast version (dashboard):** number of days in 16-day Open-Meteo forecast window
-  with min_temp < -2°C, normalized 0–1 (min=0, max=16)
+- **Historical mode:** fraction of winter months (Nov–Mar) with min_temp < -2.0°C,
+  configurable season (12 season options, 2014–2025 partial)
+- **Live forecast mode:** Open-Meteo 16-day forecast, fraction of days < -2.0°C
+- **Simulation mode:** uniform frost_days/16 for all provinces (demo)
 - Normalization: min-max across all 81 provinces
+- `HISTORICAL_YEARS = [2022, 2023, 2024]` — used for production norms only
+- `EXPOSURE_YEARS_FULL = list(range(2014, 2025))` — used for full historical exposure
 
 ### S_j — Sensitivity (crop level)
-- Source: Lag1 coefficient from product-specific FE scan
-- Negative values → floor at zero, set `insufficient_signal = True`
-- Normalization: min-max across non-flagged products only
-- Flagged products get Sj_norm = 0.0
+- Source: Lag1 coefficient × 100 from product-specific FE scan
+- Negative values → floor at zero, flag = `insufficient_signal`
+- Zero dormancy response → flag = `zero_response`
+- Normalization: min-max across non-flagged products only; flagged → S_norm = 0.0
 
 ### P_ij — Production Share (province × crop)
 - Source: `Production_Quantity` from main dataset, 2022–2024 average
 - **Hybrid normalization** (two-stage):
-  1. `national_share`: product's total production as fraction of all basket products nationally
+  1. `national_share`: product's total production / all basket products' total nationally
   2. `city_share_within`: city's share of that product's national production
   3. `P_combined = national_share × city_share_within`
   4. Min-max normalize P_combined globally → P_norm
-- Rationale: global normalization made Domates dominate everything; within-product
-  normalization made Roka #1 (distortion). Hybrid balances both.
+- Rationale: pure global normalization caused Domates to dominate; pure within-product
+  normalization inflated Roka. Hybrid balances both.
 - NA values (city doesn't produce that crop) → P_norm = 0 → risk_score = 0
 
-### Known results:
-- Top risk cities: Bitlis, Konya, Afyonkarahisar, Muş, Van
-- Antalya: E=0 (no frost), risk=0 despite being #1 producer — correct
-- Ardahan: E=1.0 (maximum frost) but P=0 for all basket products — correct (spatial mismatch)
+### Color scale anchoring:
+- **All products mode:** `global_reference_max` — max risk score across all 12 seasons × 17 products
+- **Single product mode:** `product_reference_max` — max risk score for that product across all 12 seasons
+- Both computed at startup and cached; ensures color scale is stable across season changes
 
 ---
 
-## 6. Phenological Windows
+## 6. Historical Season Coverage
 
-| Category | Activation window | Dashboard behavior |
-|----------|------------------|-------------------|
-| Vegetables | November – March | Normal risk score shown |
-| Citrus / Nar | November – March | Normal risk score shown |
-| Pome (Elma) | November – March | Risk shown but "insufficient signal" flag |
-| Stone fruits | November – March | Risk = 0, show warning: "Risk window is April–May" |
+12 seasons available in the "Historical exposure" dropdown:
 
-Spring frost analysis for stone fruits (April–May window) is a stretch goal — if time permits
-before June 11, add as optional dashboard layer. If not, document as future work in Methodology
-page. Dashboard structure is designed to accommodate this without restructuring.
+```
+"2014–2024 average"  → full 2014–2024 winter months (EXPOSURE_YEARS_FULL)
+"2014–2015"          → [(2014,11),(2014,12),(2015,1),(2015,2),(2015,3)]
+...
+"2023–2024"          → [(2023,11),(2023,12),(2024,1),(2024,2),(2024,3)]
+"2024–2025 (partial)"→ [(2024,11),(2024,12)]
+```
+
+Defined in `_SEASON_FILTERS` dict in `utils/risk_score.py`.
 
 ---
 
@@ -190,123 +189,190 @@ page. Dashboard structure is designed to accommodate this without restructuring.
 **Open-Meteo** — no API key required, free, ERA5-Land based.
 
 ```python
-import requests
-
-def fetch_forecast(lat, lon, city_name):
-    url = "https://api.open-meteo.com/v1/forecast"
-    params = {
-        "latitude": lat,
-        "longitude": lon,
-        "daily": "temperature_2m_min",
-        "forecast_days": 16,
-        "timezone": "Europe/Istanbul"
-    }
-    response = requests.get(url, params=params)
-    data = response.json()
-    # Returns: data['daily']['time'] (list of dates), data['daily']['temperature_2m_min'] (list of floats)
+url = "https://api.open-meteo.com/v1/forecast"
+params = {
+    "latitude": lat,
+    "longitude": lon,
+    "daily": "temperature_2m_min",
+    "forecast_days": 16,
+    "timezone": "Europe/Istanbul"
+}
 ```
 
-Tested and working. Returns 16 daily min_temp values.
-For dashboard: fetch all 81 provinces on load (or cache), compute E_i dynamically.
+Live forecast for all 81 provinces fetched on demand and cached with `@st.cache_data(ttl=21600)` (6h).
 
 ---
 
-## 8. Dashboard Structure (3 pages)
+## 8. Dashboard Structure (3 pages + landing)
 
-### Page 1 — Risk Map (Overview)
-- Sidebar: product dropdown (17 products)
-- Main: choropleth map of Turkey, 81 provinces colored by risk_score for selected product
-- Clicking a province → sidebar shows E, S, P values + risk score breakdown
-- Stone fruit selected → banner: "Risk window for this crop is April–May (spring frost)"
-- Data source: Open-Meteo 16-day forecast → E computed live; S and P from precomputed tables
+### app.py — Landing Page
+- Full-viewport dark layout (`#000` background)
+- Right-side frost image (`images/frost_image_small.jpg`, base64-encoded, cached)
+- Left panel: title "FROST ALERT / TR", subtitle, policy context box (2025 crisis stats)
+- Timeline metrics row: 81 provinces · 17 crops · 16d forecast · E×S×P
+- Global CSS injected via `from utils.styles import inject_global_css`
+- Additional landing-page-specific CSS: zero padding, hidden decoration bar
 
-### Page 2 — Product Detail
-- Top: whisker plot (static, all products, Lag1 + Lag2 with CI) — use saved PNG
-- Bottom: dynamic event study
-  - User selects province + product
-  - Auto-detects most severe historical frost event for that combination
-  - Shows ±3 month price window around event
-  - Default: Konya + Biber, February 2023 (paper's Figure 3)
+### Page 1 — 1_Risk_Map.py
+- Product selector (top, synced via session state `selected_product_key`)
+- Exposure mode radio: Live forecast / Historical (12 seasons) / Simulate
+- Choropleth map: `px.choropleth_mapbox` with `carto-positron` tile
+  - "All products": max risk score per province, `global_reference_max` color scale
+  - Single product: grey for no-production provinces, colored for producers
+  - Gold highlight border (`#FFD700`, width=3) for selected province
+  - Map click → updates `selected_city_key` session state → `st.rerun()`
+- Top-10 table + province detail panel (metrics: E, S, P breakdown)
+- Province lookup selectbox synced via `selected_city_key` session state
+- Time series section at bottom: dual-axis price + temperature history (2014–2024)
+  - Product selector synced with top selector via `selected_product_key`
+  - Province caption with note to use Province lookup above
+  - `E_norm == 0` info banner when city has no frost exposure
 
-### Page 3 — Methodology & About
-- Risk score formula with component explanation
-- Backtesting note: correlation of historical risk scores vs observed Lag1 price changes
-  (simple version: high-risk province-product pairs show statistically higher price increases)
-- Data sources table
-- Limitations: monthly resolution, 2025 TÜİK data not yet available, compound shocks
-  cannot be decomposed, spring frost coefficients pending
-- hal.gov.tr note: higher-frequency complement, not integrated due to price-level difference
+### Page 2 — 2_Product_Detail.py
+- Section 1: dynamic Plotly whisker plot from `data/whisker_data.csv`
+  - Lag1 (red circles) + Lag2 (blue squares) with confidence intervals
+  - Category background bands: Vegetables, Citrus, Pome, Stone fruit
+- Section 2: historical event study from 12 curated events (hardcoded `CURATED_EVENTS` list)
+  - Selectbox → `build_event_study_plot()` from `utils/event_study.py`
+  - Shows worst frost month, ±3 month price window, dual-axis Plotly chart
+
+### Page 3 — 3_Methodology.py
+- Page is fully rewritten in HTML using st.markdown(unsafe_allow_html=True) and streamlit.components.v1
+- MathJax via CDN (components.html) for formula rendering — st.latex removed entirely
+- Dark theme matching app.py: black background, #7ec8e3 blue, #ffd944 gold accents
+- Hero section with vegetables.png as background (base64, @st.cache_data), rgba(0,0,0,0.82) overlay
+- Sensitivity table dynamically built from SENSITIVITY_TABLE with pastel category row backgrounds
+- No st.header, st.dataframe, st.latex anywhere on this page
 
 ---
 
-## 9. Key Design Constraints
-
-- **No new ML model.** Dashboard uses precomputed FE coefficients only.
-- **No 2025 data.** TÜİK has not published 2025 farm-gate prices yet. Historical analysis
-  ends December 2024.
-- **Monthly resolution.** Cannot detect within-month price dynamics.
-- **Prototype framing.** Not a production system. Methodological limitations documented.
-- **English-only code.** All variable names, comments, and output messages in English.
-- **Streamlit.** No other framework.
-
----
-
-## 10. Files to Create / Expected File Structure
+## 9. File Structure (current)
 
 ```
 frostalert_tr/
-├── app.py                  # Streamlit entry point, page routing
-├── context.md              # This file
-├── config.py               # Constants: THRESHOLD, BASKET, SENSITIVITY_TABLE, city coordinates
+├── app.py                      # Landing page + global CSS entry point
+├── config.py                   # All constants and sensitivity table
+├── context.md                  # This file
+├── requirements.txt
 ├── data/
-│   └── (no large files — main CSV loaded from local path via config.py)
+│   ├── turkey_provinces.geojson
+│   └── whisker_data.csv
+├── images/
+│   ├── frost_image.png          # Original (1.7 MB)
+│   ├── frost_image_small.jpg    # Resized for web (194 KB)
+│   └── vegetables.png           # Not currently used
 ├── pages/
 │   ├── 1_Risk_Map.py
 │   ├── 2_Product_Detail.py
 │   └── 3_Methodology.py
 └── utils/
-    ├── forecast.py         # Open-Meteo fetch + E computation
-    ├── risk_score.py       # E × S × P computation (computed at runtime, cached)
-    └── event_study.py      # Dynamic event study logic
+    ├── __init__.py
+    ├── event_study.py           # find_worst_frost_event + build_event_study_plot
+    ├── forecast.py              # fetch_all_forecasts + compute_simulated_exposure
+    ├── risk_score.py            # compute_historical_exposure, compute_production_norms,
+    │                            # compute_risk_scores, compute_product_reference_max
+    ├── styles.py                # inject_global_css() — shared dark theme CSS
+    └── time_series.py           # build_time_series_plot
 ```
 
 ### Local file paths (hardcoded in config.py):
 ```python
 MAIN_DATA_PATH = "/Users/salihanurgokce/Desktop/SCHOOL/CSS/CSSM502/project/finalData/thesis_dataset_deflated_final.csv"
 COORDS_PATH    = "/Users/salihanurgokce/Desktop/SCHOOL/CSS/CSSM502/project/finalData/city_coordinates.csv"
-WHISKER_PATH   = "/Users/salihanurgokce/Desktop/SCHOOL/CSS/CSSM502/project/projectFinal/HeterogeneousImpactofFrostShocksonPrices.png"
-EVENT_STUDY_PATH = "/Users/salihanurgokce/Desktop/SCHOOL/CSS/CSSM502/project/graphs_agriculture/ag_event_study.png"
+GEOJSON_PATH   = Path(__file__).parent / "data" / "turkey_provinces.geojson"
 ```
 
-### Performance note:
-Main dataset is ~80MB. Use `@st.cache_data` on all data loading functions so the file is
-read once per session, not on every page interaction.
+---
+
+## 10. Key Config Parameters
+
+```python
+FROST_THRESHOLD    = -2.0
+FORECAST_DAYS      = 16
+HISTORICAL_YEARS   = [2022, 2023, 2024]   # production norms only
+EXPOSURE_YEARS_FULL = list(range(2014, 2025))  # full historical exposure
+WINTER_MONTHS      = [11, 12, 1, 2, 3]
+MAP_CENTER         = {"lat": 39.0, "lon": 35.5}
+MAP_ZOOM           = 5.0
+MAP_STYLE          = "carto-positron"
+COLOR_SCALE        = "YlOrRd"
+```
 
 ---
 
-## 11. What Still Needs to Be Done
+## 11. Session State Keys (Page 1)
 
-**Core (must finish before June 11):**
-1. ~~City coordinates CSV~~ — done, 81 provinces verified
-2. Open-Meteo fetch for all 81 provinces — tested for Ankara, needs scaling + caching
-3. Risk score recomputation at runtime (E × S × P) with corrected sensitivity table
-4. Streamlit skeleton — page routing, sidebar, layout
-5. Choropleth map — Folium or Plotly, Turkey GeoJSON
-6. Dynamic event study — auto-detect worst frost event per city-product, plot window
-7. Stone fruit warning banner + Portakal/Elma insufficient signal flag
+```python
+st.session_state["selected_product_key"]  # syncs top + bottom product selectors
+st.session_state["selected_city_key"]     # syncs map click + province lookup selectbox
+st.session_state["_product_top"]          # selectbox widget key
+st.session_state["_product_bottom"]       # selectbox widget key
+st.session_state["_city_select"]          # selectbox widget key
+```
 
-**Stretch goals (if time permits):**
-8. Backtesting — correlation of historical risk scores vs observed Lag1 price changes
-9. Spring frost layer — April–May window for stone fruits
-10. EN/TR language toggle — lowest priority, add last
-
-**Not in scope:**
-- Deployment to Streamlit Community Cloud (optional, not required for submission)
-- hal.gov.tr integration (documented as future work)
+Map click handler reads `map_selection.selection.points[0].get("location")` and updates
+both `selected_city_key` and `_city_select`, then calls `st.rerun()`.
 
 ---
 
-## 12. Academic Context
+## 12. Styling Architecture
+
+All pages call `inject_global_css()` from `utils/styles.py` immediately after `st.set_page_config()`.
+`app.py` also calls it but adds a small additional block for landing-page-specific layout
+(zero padding, hidden decoration bar, `#000` background overrides).
+
+**Plotly charts:** all use `template="plotly_dark"` with `paper_bgcolor="#0f1c2e"`,
+`plot_bgcolor="#162236"`, `dragmode=False`, `fixedrange=True` on all axes.
+*(Note: these dark theme overrides are in the utils files, not yet applied to the current
+backup. Re-apply if restoring from frostalert_tr_backup.)*
+
+---
+
+## 13. What Has Been Completed
+
+- [x] All three dashboard pages fully implemented and running
+- [x] Landing page (app.py) with hero layout, frost image, timeline metrics
+- [x] Risk score formula (E × S × P × 100) with hybrid P normalization
+- [x] 12-season historical exposure coverage (2014–2024 average + 11 individual seasons)
+- [x] Live 16-day Open-Meteo forecast mode
+- [x] Simulation mode (uniform frost shock demo)
+- [x] Per-product and global color scale anchoring across all seasons
+- [x] Map click → province selection with gold highlight border
+- [x] Synchronized product selector (top + bottom of Risk Map page)
+- [x] Province lookup with session state persistence
+- [x] Full 2014–2024 dual-axis time series (price + temperature)
+- [x] Event study: 12 curated historical events, dual-axis Plotly
+- [x] Whisker plot: dynamic from whisker_data.csv with CI error bars
+- [x] Methodology page: formula cards, sensitivity table, empirical model, limitations
+- [x] Dark theme CSS via utils/styles.py (shared across all pages)
+- [x] Frost image resized (1.7 MB → 194 KB) and cached
+- [x] Methodology page fully rewritten in dark theme HTML
+- [x] MathJax formula rendering via components.html
+- [x] File-based cache for compute_global_reference_max and compute_product_reference_max (writes to data/global_ref_max.json and data/ref_max_{product}.json)
+- [x] vegetables.png integrated as hero background on Methodology page
+
+---
+
+## 14. Current Open Issues / Known Limitations
+
+- **MAP_STYLE** is currently `"carto-positron"` (light). Dark mode (`"carto-darkmatter"`)
+  was explored but reverted. Can be changed in config.py.
+- **Risk Map page: dark theme not yet applied** (white background, light Plotly theme). Page 1
+  uses `template="plotly_white"` and has no black background CSS overrides.
+- **Product Detail page: dark theme partially applied**, widget styling incomplete.
+- **Plotly dark theme** (`template="plotly_dark"`, dark bgcolors) is in the codebase but was
+  reverted in the most recent backup restore. Current deployed version uses `template="plotly_white"`.
+  Re-apply if desired.
+- **`utils 2/` directory** exists in the project root (likely a macOS duplicate artifact). Can be
+  deleted safely — it is not referenced anywhere.
+- **Spring frost extension** (April–May window for stone fruits) not implemented.
+  Documented as future work in Methodology page limitations section.
+- **2025 TÜİK data** not yet available. Historical analysis ends December 2024.
+- **Streamlit version:** 1.45.1
+
+---
+
+## 15. Academic Context
 
 **Literature gap argument:** Global early warning systems (FAO GIEWS, NASA Harvest,
 AgMIP) are cereal-centric. Turkey's food inflation is driven by perishable fruits and

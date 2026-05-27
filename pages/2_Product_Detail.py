@@ -7,25 +7,36 @@ import streamlit as st
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from config import (
-    MAIN_DATA_PATH, PRODUCT_BASKET,
-)
-from utils.event_study import build_event_study_plot, find_worst_frost_event
+from config import MAIN_DATA_PATH, PRODUCT_DISPLAY_NAMES
+from utils.event_study import build_event_study_plot
 
-st.set_page_config(page_title="Product Detail — FrostAlert-TR", layout="wide")
+st.set_page_config(page_title="Product Detail — FrostAlert-TR", page_icon="❄️", layout="wide")
 
-DEFAULT_CITY    = "Konya"
-DEFAULT_PRODUCT = "Biber"
-DEFAULT_YEAR    = 2023
-DEFAULT_MONTH   = 2
+from utils.styles import inject_global_css
+inject_global_css()
 
 WHISKER_DATA_PATH = Path(__file__).parent.parent / "data" / "whisker_data.csv"
 
+CURATED_EVENTS = [
+    {"label": "Burdur — Biber (Jan 2022, +62%)",         "city": "Burdur",     "product": "Biber",     "year": 2022, "month": 1},
+    {"label": "Konya — Biber (Feb 2023, +57%)",           "city": "Konya",      "product": "Biber",     "year": 2023, "month": 2},
+    {"label": "Gümüşhane — Ispanak (Jan 2019, +45%)",     "city": "Gümüşhane", "product": "Ispanak",   "year": 2019, "month": 1},
+    {"label": "Kütahya — Ispanak (Jan 2019, +44%)",       "city": "Kütahya",   "product": "Ispanak",   "year": 2019, "month": 1},
+    {"label": "Karaman — Biber (Feb 2023, +42%)",         "city": "Karaman",    "product": "Biber",     "year": 2023, "month": 2},
+    {"label": "Karaman — Patlıcan (Feb 2023, +27%)",      "city": "Karaman",    "product": "Patlıcan",  "year": 2023, "month": 2},
+    {"label": "Bilecik — Ispanak (Jan 2017, +26%)",       "city": "Bilecik",    "product": "Ispanak",   "year": 2017, "month": 1},
+    {"label": "Ankara — Ispanak (Jan 2017, +17%)",        "city": "Ankara",     "product": "Ispanak",   "year": 2017, "month": 1},
+    {"label": "Kırşehir — Biber (Feb 2023, +17%)",        "city": "Kırşehir",  "product": "Biber",     "year": 2023, "month": 2},
+    {"label": "Tokat — Ispanak (Jan 2017, +8%)",          "city": "Tokat",      "product": "Ispanak",   "year": 2017, "month": 1},
+    {"label": "Bartın — Mandalina (Jan 2017, +8%)",       "city": "Bartın",    "product": "Mandalina", "year": 2017, "month": 1},
+    {"label": "Karaman — Domates (Feb 2023, +4%)",        "city": "Karaman",    "product": "Domates",   "year": 2023, "month": 2},
+]
+
 CATEGORY_COLORS = {
-    "Vegetables":   "#2ca02c",
-    "Citrus":       "#ff7f0e",
-    "Pome":         "#9467bd",
-    "Stone fruit":  "#1f77b4",
+    "Vegetables":  "#4ade80",
+    "Citrus":      "#fb923c",
+    "Pome":        "#c084fc",
+    "Stone fruit": "#38bdf8",
 }
 
 PRODUCT_CATEGORIES = {
@@ -95,13 +106,13 @@ def build_whisker_plot(df_viz: pd.DataFrame) -> go.Figure:
         y=DISPLAY_ORDER,
         mode="markers",
         name="2 Months Later (Lag 2)",
-        marker=dict(symbol="square", color="#1f77b4", size=9),
+        marker=dict(symbol="square", color="#7ec8e3", size=9),
         error_x=dict(
             type="data",
             symmetric=False,
             array=lag2["Error_Max"].tolist(),
             arrayminus=lag2["Error_Min"].tolist(),
-            color="#1f77b4",
+            color="#7ec8e3",
             thickness=1.5,
             width=5,
         ),
@@ -112,19 +123,19 @@ def build_whisker_plot(df_viz: pd.DataFrame) -> go.Figure:
         y=DISPLAY_ORDER,
         mode="markers",
         name="1 Month Later (Lag 1)",
-        marker=dict(symbol="circle", color="#d62728", size=9),
+        marker=dict(symbol="circle", color="#ff6b6b", size=9),
         error_x=dict(
             type="data",
             symmetric=False,
             array=lag1["Error_Max"].tolist(),
             arrayminus=lag1["Error_Min"].tolist(),
-            color="#d62728",
+            color="#ff6b6b",
             thickness=1.5,
             width=5,
         ),
     ))
 
-    fig.add_vline(x=0, line_color="black", line_width=1)
+    fig.add_vline(x=0, line_color="#4a5568", line_width=1)
 
     for cat, (y0, y1) in category_spans.items():
         fig.add_annotation(
@@ -138,21 +149,48 @@ def build_whisker_plot(df_viz: pd.DataFrame) -> go.Figure:
 
     fig.update_layout(
         title="Heterogeneous Impact of Frost Shocks on Prices (Lag 1 & Lag 2)",
-        xaxis_title="Price Impact (%)",
+        title_font=dict(color="#8ab4cc"),
+        font=dict(color="#e8f4f8"),
         yaxis_title=None,
-        template="plotly_white",
+        template="plotly_dark",
+        paper_bgcolor="#0a0a0a",
+        plot_bgcolor="#111111",
         height=520,
         margin=dict(l=20, r=120, t=50, b=40),
-        legend=dict(orientation="h", y=-0.08, x=0),
-        yaxis=dict(autorange="reversed"),
+        legend=dict(orientation="h", y=-0.08, x=0, font=dict(color="#e8f4f8")),
+        xaxis=dict(
+            title="Price Impact (%)",
+            tickfont=dict(color="#8ab4cc"),
+            title_font=dict(color="#8ab4cc"),
+            gridcolor="rgba(255,255,255,0.06)",
+            zerolinecolor="#4a5568",
+        ),
+        yaxis=dict(
+            autorange="reversed",
+            tickfont=dict(color="#e8f4f8"),
+            gridcolor="rgba(255,255,255,0.04)",
+        ),
     )
     return fig
 
 
-st.title("Product Detail")
+# ---------------------------------------------------------------------------
+# Page
+# ---------------------------------------------------------------------------
+
+st.markdown("""
+<div style='font-size:2.2em;font-weight:900;letter-spacing:-0.5px;margin-bottom:0.5em;line-height:1.1'>
+<span style='color:#ffffff'>PRODUCT</span><br>
+<span style='color:#7ec8e3'>DETAIL</span>
+</div>
+""", unsafe_allow_html=True)
 st.markdown("Heterogeneous frost-price impacts by product and historical event study.")
 
-st.subheader("Heterogeneous impact of frost shocks on prices (Lag 1 + Lag 2)")
+# ---------------------------------------------------------------------------
+# Section 1: Whisker plot
+# ---------------------------------------------------------------------------
+
+st.markdown("<h3 style='color:#ffd944 !important;font-weight:700'>Heterogeneous impact of frost shocks on prices (Lag 1 + Lag 2)</h3>", unsafe_allow_html=True)
 
 if WHISKER_DATA_PATH.exists():
     df_viz = load_whisker_data()
@@ -168,46 +206,47 @@ else:
 
 st.markdown("---")
 
-st.subheader("Historical event study")
+# ---------------------------------------------------------------------------
+# Section 2: Historical event study
+# ---------------------------------------------------------------------------
 
-with st.sidebar:
-    st.header("Event study controls")
-    selected_product = st.selectbox("Product", PRODUCT_BASKET,
-                                    index=PRODUCT_BASKET.index(DEFAULT_PRODUCT))
-    with st.spinner("Loading province list…"):
-        df = load_detail_data()
-    cities = sorted(df["City"].dropna().unique().tolist())
-    default_idx = cities.index(DEFAULT_CITY) if DEFAULT_CITY in cities else 0
-    selected_city = st.selectbox("Province", cities, index=default_idx)
+st.markdown("<h3 style='color:#ffd944 !important;font-weight:700'>Historical event study</h3>", unsafe_allow_html=True)
 
-    auto_detect = st.checkbox("Auto-detect worst frost event", value=True)
+with st.spinner("Loading data…"):
+    df = load_detail_data()
 
-    if not auto_detect:
-        year  = st.number_input("Year",  min_value=2014, max_value=2024, value=DEFAULT_YEAR)
-        month = st.number_input("Month", min_value=1,    max_value=12,   value=DEFAULT_MONTH)
-    else:
-        year, month = None, None
+def _translate_event_label(label: str) -> str:
+    for tr, en in PRODUCT_DISPLAY_NAMES.items():
+        label = label.replace(f"— {tr} ", f"— {en} ")
+    return label
 
-with st.spinner("Running event study…"):
-    if auto_detect:
-        event = find_worst_frost_event(df, selected_city, selected_product)
-        if event is None:
-            st.info(
-                f"No frost event (min_temp < –2°C) found for **{selected_city} / {selected_product}**. "
-                "Showing default event: Konya / Biber, Feb 2023."
-            )
-            event_year, event_month = DEFAULT_YEAR, DEFAULT_MONTH
-        else:
-            event_year, event_month = event
-    else:
-        event_year, event_month = int(year), int(month)
+_translated_labels = [_translate_event_label(e["label"]) for e in CURATED_EVENTS]
 
-    caption = (
-        f"Worst frost event detected: **{event_month}/{event_year}** — "
-        f"{selected_city} / {selected_product}"
-        if auto_detect
-        else f"Custom event: {event_month}/{event_year}"
-    )
-    st.caption(caption)
-    fig = build_event_study_plot(df, selected_city, selected_product, event_year, event_month)
+selected_label = st.selectbox("Select event", options=_translated_labels, index=1)
+original_label = CURATED_EVENTS[_translated_labels.index(selected_label)]["label"]
+st.caption(
+    "Price change (%) calculated as mean real price in the 3 months following "
+    "the frost event vs. 3 months prior."
+)
+
+event = next(e for e in CURATED_EVENTS if e["label"] == original_label)
+city    = event["city"]
+product = event["product"]
+year    = event["year"]
+month   = event["month"]
+
+with st.spinner("Rendering event study…"):
+    fig = build_event_study_plot(df, city, product, year, month)
     st.plotly_chart(fig, use_container_width=True)
+
+from config import PRODUCT_FILTER_MAP
+filt = PRODUCT_FILTER_MAP.get(product, product)
+event_row = df[
+    (df["City"] == city)
+    & (df["Product_Name"].str.contains(filt, na=False, regex=False))
+    & (df["Year"] == year)
+    & (df["Month"] == month)
+]
+if not event_row.empty:
+    min_temp_val = event_row["min_temp"].min()
+    st.caption(f"Worst frost recorded: {min_temp_val:.1f}°C ({month}/{year})")

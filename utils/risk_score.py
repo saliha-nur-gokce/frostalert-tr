@@ -1,7 +1,8 @@
 import numpy as np
 import pandas as pd
 import streamlit as st
-from config import SENSITIVITY_TABLE, HISTORICAL_YEARS, WINTER_MONTHS, FROST_THRESHOLD, PRODUCT_FILTER_MAP
+from pathlib import Path
+from config import SENSITIVITY_TABLE, HISTORICAL_YEARS, EXPOSURE_YEARS_FULL, WINTER_MONTHS, FROST_THRESHOLD, PRODUCT_FILTER_MAP
 
 
 @st.cache_data(show_spinner=False)
@@ -27,11 +28,19 @@ def compute_sensitivity_norms() -> dict[str, float]:
     return norms
 
 
-_SEASON_FILTERS: dict[str, list[tuple[int, int]]] = {
-    "2022–2023":          [(2022, 11), (2022, 12), (2023, 1), (2023, 2), (2023, 3)],
-    "2023–2024":          [(2023, 11), (2023, 12), (2024, 1), (2024, 2), (2024, 3)],
-    "2024–2025 (partial)":[(2024, 11), (2024, 12)],
-    "2022–2024 average":  None,   # existing behavior: all HISTORICAL_YEARS × WINTER_MONTHS
+_SEASON_FILTERS: dict[str, list[tuple[int, int]] | str] = {
+    "2014–2024 average":       "full",
+    "2014–2015":               [(2014, 11), (2014, 12), (2015, 1), (2015, 2), (2015, 3)],
+    "2015–2016":               [(2015, 11), (2015, 12), (2016, 1), (2016, 2), (2016, 3)],
+    "2016–2017":               [(2016, 11), (2016, 12), (2017, 1), (2017, 2), (2017, 3)],
+    "2017–2018":               [(2017, 11), (2017, 12), (2018, 1), (2018, 2), (2018, 3)],
+    "2018–2019":               [(2018, 11), (2018, 12), (2019, 1), (2019, 2), (2019, 3)],
+    "2019–2020":               [(2019, 11), (2019, 12), (2020, 1), (2020, 2), (2020, 3)],
+    "2020–2021":               [(2020, 11), (2020, 12), (2021, 1), (2021, 2), (2021, 3)],
+    "2021–2022":               [(2021, 11), (2021, 12), (2022, 1), (2022, 2), (2022, 3)],
+    "2022–2023":               [(2022, 11), (2022, 12), (2023, 1), (2023, 2), (2023, 3)],
+    "2023–2024":               [(2023, 11), (2023, 12), (2024, 1), (2024, 2), (2024, 3)],
+    "2024–2025 (partial)":     [(2024, 11), (2024, 12)],
 }
 
 
@@ -44,9 +53,9 @@ def compute_historical_exposure(_df: pd.DataFrame, season: str = "2022–2024 av
     Returns DataFrame with columns: City, E_norm
     """
     ym_pairs = _SEASON_FILTERS.get(season)
-    if ym_pairs is None:
+    if ym_pairs == "full":
         hist = _df[
-            _df["Year"].isin(HISTORICAL_YEARS) & _df["Month"].isin(WINTER_MONTHS)
+            _df["Year"].isin(EXPOSURE_YEARS_FULL) & _df["Month"].isin(WINTER_MONTHS)
         ].copy()
     else:
         mask = pd.Series(False, index=_df.index)
@@ -159,4 +168,30 @@ def compute_risk_scores(
     result["risk_raw"] = result["E_norm"] * result["S_norm"] * result["P_norm"]
     result["risk_score"] = (result["risk_raw"] * 100).round(2)
 
+    return result
+
+
+@st.cache_data(show_spinner=False)
+def compute_product_reference_max(_df: pd.DataFrame, product: str) -> float:
+    import json
+    cache_path = Path(__file__).parent.parent / "data" / f"ref_max_{product}.json"
+    if cache_path.exists():
+        with open(cache_path) as f:
+            return json.load(f)["value"]
+    all_seasons = [
+        "2014–2024 average",
+        "2014–2015", "2015–2016", "2016–2017", "2017–2018",
+        "2018–2019", "2019–2020", "2020–2021", "2021–2022",
+        "2022–2023", "2023–2024", "2024–2025 (partial)",
+    ]
+    prod_norm = compute_production_norms(_df)
+    all_scores: list[float] = []
+    for season in all_seasons:
+        exp = compute_historical_exposure(_df, season)
+        scores = compute_risk_scores(exp, prod_norm, product)["risk_score"].tolist()
+        all_scores.extend(scores)
+    result = max(max(all_scores) if all_scores else 0.1, 0.1)
+    cache_path.parent.mkdir(exist_ok=True)
+    with open(cache_path, "w") as f:
+        json.dump({"value": result}, f)
     return result

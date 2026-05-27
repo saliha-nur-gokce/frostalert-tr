@@ -1,14 +1,14 @@
 from pathlib import Path
 
 # ---------------------------------------------------------------------------
-# File paths
+# File paths  (relative — works locally and on Streamlit Cloud)
 # ---------------------------------------------------------------------------
-MAIN_DATA_PATH = "/Users/salihanurgokce/Desktop/SCHOOL/CSS/CSSM502/project/finalData/thesis_dataset_deflated_final.csv"
-COORDS_PATH    = "/Users/salihanurgokce/Desktop/SCHOOL/CSS/CSSM502/project/finalData/city_coordinates.csv"
-WHISKER_PATH   = "/Users/salihanurgokce/Desktop/SCHOOL/CSS/CSSM502/project/projectFinal/HeterogeneousImpactofFrostShocksonPrices.png"
-EVENT_STUDY_PATH = "/Users/salihanurgokce/Desktop/SCHOOL/CSS/CSSM502/project/graphs_agriculture/ag_event_study.png"
+_BASE = Path(__file__).parent
 
-GEOJSON_PATH = Path(__file__).parent / "data" / "turkey_provinces.geojson"
+MAIN_DATA_PATH = str(_BASE / "data" / "thesis_dataset_deflated_final.csv")
+COORDS_PATH    = str(_BASE / "data" / "city_coordinates.csv")
+
+GEOJSON_PATH = _BASE / "data" / "turkey_provinces.geojson"
 GEOJSON_URL  = "https://raw.githubusercontent.com/cihadturhan/tr-geojson/master/geo/tr-cities-utf8.json"
 
 # ---------------------------------------------------------------------------
@@ -16,7 +16,8 @@ GEOJSON_URL  = "https://raw.githubusercontent.com/cihadturhan/tr-geojson/master/
 # ---------------------------------------------------------------------------
 FROST_THRESHOLD    = -2.0
 FORECAST_DAYS      = 16
-HISTORICAL_YEARS   = [2022, 2023, 2024]
+HISTORICAL_YEARS        = [2022, 2023, 2024]   # used for production norms only
+EXPOSURE_YEARS_FULL     = list(range(2014, 2025))  # used for full historical exposure
 WINTER_MONTHS      = [11, 12, 1, 2, 3]
 
 # ---------------------------------------------------------------------------
@@ -44,6 +45,26 @@ SENSITIVITY_TABLE = {
 }
 
 PRODUCT_BASKET = list(SENSITIVITY_TABLE.keys())
+
+PRODUCT_DISPLAY_NAMES = {
+    "Domates":   "Tomato",
+    "Biber":     "Pepper",
+    "Patlıcan":  "Eggplant",
+    "Hıyar":     "Cucumber",
+    "Ispanak":   "Spinach",
+    "Roka":      "Arugula",
+    "Turp":      "Radish",
+    "Mandalina": "Mandarin",
+    "Nar":       "Pomegranate",
+    "Portakal":  "Orange",
+    "Elma":      "Apple",
+    "Kiraz":     "Cherry",
+    "Vişne":     "Sour Cherry",
+    "Kayısı":    "Apricot",
+    "Şeftali":   "Peach",
+    "Erik":      "Plum",
+    "Çilek":     "Strawberry",
+}
 
 # Mapping from product short name to the substring used to filter Product_Name column
 PRODUCT_FILTER_MAP = {
@@ -81,5 +102,5 @@ GEOJSON_TO_CITY = {
 # ---------------------------------------------------------------------------
 MAP_CENTER  = {"lat": 39.0, "lon": 35.5}
 MAP_ZOOM    = 5.0
-MAP_STYLE   = "carto-positron"
+MAP_STYLE   = "carto-darkmatter"
 COLOR_SCALE = "YlOrRd"
