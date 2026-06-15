@@ -205,7 +205,7 @@ frostalert_tr/
 
 ---
 
-## Thesis Extension (Next Steps)
+## Future Work
 
 - Spring frost layer: April–May window, 42 candidate crops identified (`df_spring_frost_candidates`)
 - Uncertainty bands on Sj estimates
